@@ -1,44 +1,32 @@
-# .github/workflows/ci.yml
-name: CI
+# .github/workflows/ci.yml (steps section)
+steps:
+  - uses: actions/checkout@v4
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  - uses: actions/setup-python@v5
+    with:
+      python-version: "3.11"
 
-jobs:
-  ci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  - name: Install dependencies
+    run: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+  - name: Train (deterministic)
+    run: python training/train.py --out-dir artifacts --model-version ${{ github.sha }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  - name: Tests
+    run: pytest -q
 
-      - name: Lint (ruff)
-        run: ruff check .
+  - name: Lint (ruff)
+    run: ruff check .
 
-      - name: Style (black)
-        run: black --check .
+  - name: Style (black)
+    run: black --check .
 
-      - name: Tests
-        run: pytest -q
+  - name: Upload artifacts
+    uses: actions/upload-artifact@v4
+    with:
+      name: model-artifacts
+      path: artifacts/
+      if-no-files-found: error
 
-      - name: Train (deterministic)
-        run: python training/train.py --out-dir artifacts --model-version ${{ github.sha }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-artifacts
-          path: artifacts/
-          if-no-files-found: error
